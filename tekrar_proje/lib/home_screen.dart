@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:tekrar_proje/models/urunler_model.dart';
+import 'package:http/http.dart' as http;
+import 'package:tekrar_proje/models/kategori_model.dart';
+import 'package:tekrar_proje/models/urun_model.dart';
 
 class home_screen extends StatefulWidget {
   const home_screen({super.key});
@@ -12,28 +14,49 @@ class home_screen extends StatefulWidget {
 }
 
 class _home_screenState extends State<home_screen> {
-  UrunlerModel? _veriler;
   List<Urun> _urunler = [];
+  List<Kategori> _kategoriler = [];
 
   void _loadData() async {
     final dataString = await rootBundle.loadString('assets/files/data.json');
     final dataJson = jsonDecode(dataString);
 
-    _veriler = UrunlerModel.fromJson(dataJson);
-    _urunler = _veriler!.urunler;
+    _urunler = dataJson['urunler']
+        .map<Urun>((json) => Urun.fromJson(json))
+        .toList();
+
+    _kategoriler = dataJson['kategoriler']
+        .map<Kategori>((json) => Kategori.fromJson(json))
+        .toList();
     setState(() {});
   }
 
   void _filterData(int id) {
-    _urunler = _veriler!.urunler
+    _urunler = _urunler
         .where((verilerEleman) => verilerEleman.kategori == id)
         .toList();
     setState(() {});
   }
 
+  Future<void> _getDataFromAPI() async {
+    var response = await http.get(Uri.parse('https://reqres.in/api'));
+
+    if(response.statusCode == 200) {
+      print('Başarılı');
+
+      var jsonDecodeApi = jsonDecode(response.body);
+      print(jsonDecodeApi['version']);
+
+    } else {
+      print('Başarısız');
+    }
+
+  }
+
   @override
   void initState() {
     _loadData();
+    _getDataFromAPI();
     super.initState();
   }
 
@@ -41,7 +64,7 @@ class _home_screenState extends State<home_screen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: _veriler == null
+        child: _urunler.isEmpty && _kategoriler.isEmpty
             ? Text('Yükleniyor')
             : Column(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -75,9 +98,9 @@ class _home_screenState extends State<home_screen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(
-        _veriler!.kategoriler.length,
+      _kategoriler.length,
         (index) => GestureDetector(
-          onTap: () => _filterData(_veriler!.kategoriler[index].id),
+          onTap: () => _filterData(_kategoriler[index].id),
           child: Container(
             padding: EdgeInsets.all(8),
             margin: const EdgeInsets.symmetric(horizontal: 10),
@@ -85,7 +108,7 @@ class _home_screenState extends State<home_screen> {
               color: Colors.black12,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text(_veriler!.kategoriler[index].isim),
+            child: Text(_kategoriler[index].isim),
           ),
         ),
       ),
